@@ -1,0 +1,116 @@
+This instruction mainly introduced how to retrain the whole Inception's model for new categories.
+
+This instrution is mainly based on tensorflow's built-in scripts and functions, and a few modifications of the script may be added. In fact the tutorials of how to use them can be accessed in Tensorflow's official website or Github. However when I tried to use them, I find some of the links and scripts given are broken or out of dated. So this instruction is written to just collect and summarize useful information from Tensorflow. 
+
+Inception is Google's CNN model for classifying images, which has been fine trained for 1000 classes in ImageNet dataset. 
+Here assuming we have some other datasets, for example, 11 kinds of fruits and vegetables images which consist of totally around 14,000 images. And we want to make this Inception_v3 model applicable in our case. One idea is to just tune this model's output layer's parameters. The reason our final layer retraining can work on new classes is that it turns out the kind of information needed to distinguish between all the 1,000 classes in ImageNet is often also useful to distinguish between new kinds of objects.
+
+However, another more complicated idea is to retrain the whole network thoroughly, which may get a better result on our customized categories.
+
+The steps are as following:
+
+1.) Preparing your dataset.
+
+Assuming you have a folder containing two subfolders: train and validation. In each subfolder , there are class-named subfolders, each full of images for each label. The example folder fruit_and_vegetable should have a structure like this:
+
+~/fruit_and_vegetable/train/apple/photo1.jpg
+~/fruit_and_vegetable/train/apple/photo2.jpg
+...
+~/fruit_and_vegetable/train/banana/anotherphoto77.jpg
+...
+~/fruit_and_vegetable/validation/apple/somepicture.jpg
+...
+~/fruit_and_vegetable/validation/banana/somepicture321.jpg
+
+The subfolder names are important, since they define what label is applied to
+each image, but the filenames inside subfolders themselves don't matter. 
+
+And then in the directory of fruit_and_vegetable folder, you shall create a file named "label.txt", where containing the following data in our example:
+
+apple
+banana
+...
+carrot
+...
+
+you just need to type all the 11 labels line by line in this text file.
+
+
+2.) Clone tensorflow's repository.
+
+In your terminal or cmd:
+
+$git clone https://github.com/tensorflow/models.git
+$git clone https://github.com/tensorflow/tensorflow.git
+
+3.) Transfer data into TFrecords.
+
+Once your images and repositories are prepared, you can begin to transfer data into tensorflow's built-in TFrecords.
+
+$python models/research/inception/inception/data/build_image_data.py --train_directory="~/fruit_and_vegetable/train" --validation_directory="~/fruit_and_vegetable/validation" --output_directory="~/fruit_and_vegetable/output" --labels_file="~/fruit_and_vegetable/label.txt" --train_shards=16 --validation_shards=4 --num_threads=4
+
+Here, train_directory and validation_directory is the directory of your prepared images. In our example, it is the train and validation subfolders inside fruit_and_vegetabel folder.
+
+labels_file is the text file which you shall prepare in step 1.
+
+output_directory indicates the directory of your transformed tfrecords files.
+
+train_shards and validation_shards indicate the shards you set for dividing the dataset. It is recommended that each shard consists of nearly 1000 images.
+
+num_threads indicate the number of threads you set to transform data.
+
+Notice: the tfrecord files output by this script do not have suffix ".tfrecord", although they are indeed in tfrecod formats. For some scripts that require the suffix to identify data, you may use a bash command to add the suffix.
+
+In Ubuntu, you just need to launch terminal in the directory of your output files and type following:
+
+$for i in *; do mv $i $i".tfrecord"; done
+
+In Windows, you may need a python script to do it:
+
+
+# -*- coding: cp936 -*-
+import os
+path = './output/'
+
+for file in os.listdir(path):
+    if os.path.isfile(os.path.join(path,file))==True:
+        if file.find('.')<0:
+            newname=file+'.tfrecord'            
+            os.rename(os.path.join(path,file),os.path.join(path,newname))
+            print (file,'ok')
+
+
+Save the above codes in a script file maybe named "add_suffix.py", modify path according to your directory. In our case, it shall be './output'. And then run it!
+
+4.) Network retraining.
+
+This case is manliy referred to https://github.com/tensorflow/models/tree/master/research/slim.
+
+In tensorflow's tutorial, they offer a instruction about how to retrain partly or thoroughly inception model on 4 specified datasets: Flowers, Cifar10, MNIST and ImageNet. This instruction, however, is not that generic to any kinds of customized datasets, the scripts and guidance there can only be used for the 4 specified datasets.
+
+But good news is that the Flowers dataset is just a dataset with 5 classes and around 1500 images, which is quite similar to other small customized datasets. In our example, we have 11 classes of fruit and vegetables and around 15000 images. So we can just edit the scripts for training flowers dataset to make it work in our case.
+
+In the directory of the repositories where you cloned in step 2, type following code in terminal:
+
+$cd models/research/inception/inception
+
+In current directory, edit the flowers_data.py: in line 34, modify the return value according to your dataset, in our example, we shall modify the value from 5 to 11. In line 39 and line 42, modify the return values to the number of images in your train and validation sets respectively. You can easily get this number from step 3. After you run the build_image_data.py, the number of samples from train and validation sets will be printed in terminal or cmd.
+
+After the modification of flowers_data.py, move flowers_train.py into parent directory and train:
+
+$cp flowers_train.py ../
+$cd ..
+$python flowers_train.py --train_dir="/home/wxy/Documents/TensorFLow/retrained_scratch/" --data_dir="/home/wxy/Documents/dataSet/divided_fruit_and_vegetable/output/" --fine_tune=True 
+
+This training may take serveral hours, depending on your PC. If your PC does not have a graphics memory larger than 4Gb, it is highly recommended to only retrain the output layer of Inception.
+
+5.) Image classifiying.
+
+Here is a script for classifying images with trained networks:
+$curl -L https://goo.gl/3lTKZs > label_image.py
+
+Before use, you may need to edit this script to match your output files' name. In the line 15 and line 18, modify the names of labels and graph files to your case. In our example, you shall modify them to "output_labels.txt" and "output_graph.pb".
+
+And assume you already put an image named "test1.jpeg" which is going to be classified in current directory. Run the script in your cmd:
+
+$python label_image.py test1.jpeg

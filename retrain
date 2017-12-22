@@ -1,0 +1,56 @@
+This instruction mainly introduced how to retrain Inception's final layer for new categories.
+
+This instrution is mainly based on tensorflow's built-in scripts and functions, and a few modifications of the script may be added. In fact the tutorials of how to use them can be accessed in Tensorflow's official website or Github. However when I tried to use them, I find some of the links and scripts given are broken or out of dated. So this instruction is written to just collect and summarize useful information from Tensorflow. 
+
+Inception is Google's CNN model for classifying images, which has been fine trained for 1000 classes in ImageNet dataset. 
+Here assuming we have some other datasets, for example, 11 kinds of fruits and vegetables images which consist of totally around 14,000 images. And we want to make this Inception_v3 model applicable in our case. One idea is to just tune this model's output layer's parameters. The reason our final layer retraining can work on new classes is that it turns out the kind of information needed to distinguish between all the 1,000 classes in ImageNet is often also useful to distinguish between new kinds of objects.
+
+The steps are as following:
+
+1.) Preparing your dataset.
+
+Assuming you have a folder containing class-named subfolders, each full of images for each label. The example folder fruit_and_vegetable should have a structure like this:
+
+~/fruit_and_vegetable/apple/photo1.jpg
+~/fruit_and_vegetable/apple/photo2.jpg
+...
+~/fruit_and_vegetable/banana/anotherphoto77.jpg
+...
+~/fruit_and_vegetable/carrot/somepicture.jpg
+
+The subfolder names are important, since they define what label is applied to
+each image, but the filenames inside subfolders themselves don't matter. 
+
+2.) Clone tensorflow's repository.
+
+In your terminal or cmd:
+
+$git clone https://github.com/tensorflow/models.git
+$git clone https://github.com/tensorflow/tensorflow.git
+
+3.) Run a script.
+
+Once your images and repositories are prepared, you can run the training with a command like this:
+
+$python tensorflow/tensorflow/examples/image_retraining/retrain.py --bottleneck_dir bottleneck --how_many_training_steps 4000 --model_dir model --output_graph output_graph.pb --output_labels output_labels.txt --image_dir ~/Documents/dataSet/fruit_and_vegetable --summaries_dir summaries
+
+Here, image_dir is the directory of your prepared images. In our example, it is the fruit_and_vegetabel folder.
+
+how_many_training_steps indicates the steps you set for training. 
+
+output_graph indicates the directory of your output graph of this network. This .pb file will be used in future application.
+
+summaries_dir indicates the directory of logging files of the training. You can visualize your network with TensorBoard using these files by:
+$tensorboard --logdir summaries
+
+This training may take around 10 minutes or longer, depending on your PC.
+
+4.) Image classifiying.
+
+Here is a script for classifying images with trained networks:
+$curl -L https://goo.gl/3lTKZs > label_image.py
+
+Before use, you may need to edit this script to match your output files' name. In the line 15 and line 18, modify the names of labels and graph files to your case. In our example, you shall modify them to "output_labels.txt" and "output_graph.pb".
+
+And assume you already put an image named "test1.jpeg" which is going to be classified in current directory. Run the script in your cmd:
+$python label_image.py test1.jpeg
